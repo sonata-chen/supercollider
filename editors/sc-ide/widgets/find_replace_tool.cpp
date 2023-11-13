@@ -162,10 +162,18 @@ void TextFindReplacePanel::initiate() {
     findAll();
 }
 
-QRegExp TextFindReplacePanel::regexp() {
-    QRegExp expr(findString());
-    expr.setPatternSyntax(asRegExp() ? QRegExp::RegExp : QRegExp::FixedString);
-    expr.setCaseSensitivity(matchCase() ? Qt::CaseSensitive : Qt::CaseInsensitive);
+QRegularExpression TextFindReplacePanel::regexp() {
+    QString pattern = findString();
+    QRegularExpression expr;
+
+    if (asRegExp()) {
+        expr = QRegularExpression(pattern);
+    } else {
+        expr = QRegularExpression(QRegularExpression::escape(pattern));
+    }
+    if (!matchCase())
+        expr.setPatternOptions(QRegularExpression::PatternOption::CaseInsensitiveOption);
+
     return expr;
 }
 
@@ -173,6 +181,8 @@ QTextDocument::FindFlags TextFindReplacePanel::flags() {
     QTextDocument::FindFlags f;
     if (wholeWords())
         f |= QTextDocument::FindWholeWords;
+    if (matchCase())
+        f |= QTextDocument::FindCaseSensitively;
     return f;
 }
 
@@ -188,20 +198,20 @@ void TextFindReplacePanel::onFindFieldTextChanged() {
     if (!mEditor)
         return;
 
-    QRegExp expr(regexp());
+    QRegularExpression expr(regexp());
     QTextDocument::FindFlags flagz(flags());
 
     if (mSearchPosition == -1)
         mSearchPosition = mEditor->textCursor().selectionStart();
 
     int count = mEditor->findAll(expr, flagz);
-    if (!expr.isEmpty())
+    if (expr.isValid())
         reportFoundOccurrencies(count);
 
     QTextCursor searchCursor(mEditor->textDocument());
     searchCursor.setPosition(mSearchPosition);
 
-    if (expr.isEmpty()) {
+    if (!expr.isValid()) {
         mEditor->setTextCursor(searchCursor);
     } else if (count) {
         mEditor->setTextCursor(searchCursor);
@@ -222,8 +232,8 @@ void TextFindReplacePanel::find(bool backwards) {
     if (!mEditor)
         return;
 
-    QRegExp expr = regexp();
-    if (expr.isEmpty())
+    QRegularExpression expr = regexp();
+    if (!expr.isValid())
         return;
 
     QTextDocument::FindFlags opt = flags();
@@ -240,12 +250,12 @@ void TextFindReplacePanel::findAll() {
     if (!mEditor)
         return;
 
-    QRegExp expr = regexp();
+    QRegularExpression expr = regexp();
 
     // NOTE: empty expression removes any search highlighting
     int count = mEditor->findAll(expr, flags());
 
-    if (!expr.isEmpty())
+    if (expr.isValid())
         reportFoundOccurrencies(count);
 }
 
@@ -253,8 +263,8 @@ void TextFindReplacePanel::replace() {
     if (!mEditor)
         return;
 
-    QRegExp expr = regexp();
-    if (expr.isEmpty())
+    QRegularExpression expr = regexp();
+    if (!expr.isValid())
         return;
 
     mEditor->replace(expr, replaceString(), flags());
@@ -266,8 +276,8 @@ void TextFindReplacePanel::replaceAll() {
     if (!mEditor)
         return;
 
-    QRegExp expr = regexp();
-    if (expr.isEmpty())
+    QRegularExpression expr = regexp();
+    if (!expr.isValid())
         return;
 
     QTextDocument::FindFlags opt = flags();
