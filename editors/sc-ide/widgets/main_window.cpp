@@ -850,8 +850,10 @@ void MainWindow::updateRecentDocsMenu() {
 
     const QStringList& recent = mMain->documentManager()->recents();
 
-    foreach (const QString& path, recent)
-        mRecentDocsMenu->addAction(path);
+    foreach (const QString& path, recent) {
+        QAction* action = mRecentDocsMenu->addAction(path);
+        action->setData(QVariant(path));
+    }
 
     if (!recent.isEmpty()) {
         mRecentDocsMenu->addSeparator();
@@ -859,7 +861,9 @@ void MainWindow::updateRecentDocsMenu() {
     }
 }
 
-void MainWindow::onOpenRecentDocument(QAction* action) { mMain->documentManager()->open(action->text()); }
+void MainWindow::onOpenRecentDocument(QAction* action) {
+    mMain->documentManager()->open(action->data().value<QString>());
+}
 
 void MainWindow::onInterpreterStateChanged(QProcess::ProcessState state) {
     switch (state) {
